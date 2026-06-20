@@ -1,5 +1,27 @@
 import axios from 'axios';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import router from '../router';
+
+const TOKEN_KEY = 'rx_access_token';
+const USER_KEY = 'rx_user_info';
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+export const removeToken = () => localStorage.removeItem(TOKEN_KEY);
+export const getUserInfo = () => {
+  const raw = localStorage.getItem(USER_KEY);
+  return raw ? JSON.parse(raw) : null;
+};
+export const setUserInfo = (user) => localStorage.setItem(USER_KEY, JSON.stringify(user));
+export const removeUserInfo = () => localStorage.removeItem(USER_KEY);
+
+export const clearAuthAndGoLogin = () => {
+  removeToken();
+  removeUserInfo();
+  if (router.currentRoute.value.name !== 'Login') {
+    router.push({ name: 'Login' });
+  }
+};
 
 const service = axios.create({
   baseURL: '/api',
@@ -8,6 +30,10 @@ const service = axios.create({
 
 service.interceptors.request.use(
   (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -29,6 +55,33 @@ service.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       const message = error.response.data?.message || error.message;
+
+      if (status === 401) {
+        ElMessageBox.confirm(message || '登录状态已失效，请重新登录', '提示', {
+          confirmButtonText: '重新登录',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          clearAuthAndGoLogin();
+        }).catch(() => {
+          clearAuthAndGoLogin();
+        });
+        return Promise.reject(error);
+      }
+
+      if (status === 403) {
+        ElMessageBox.alert(
+          message || '您没有权限执行此操作，请联系管理员。',
+          '权限不足',
+          {
+            confirmButtonText: '知道了',
+            type: 'error',
+            dangerouslyUseHTMLString: true
+          }
+        );
+        return Promise.reject(error);
+      }
+
       if (status === 400) {
         if (error.response.data?.data) {
           return Promise.resolve({

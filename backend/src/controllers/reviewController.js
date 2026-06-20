@@ -6,10 +6,10 @@ class ReviewController {
     const { id } = ctx.params;
     const data = ctx.request.body;
 
-    if (!data.reviewerId || !data.reviewerName) {
-      ctx.status = 400;
-      throw new Error('审核人信息不完整');
-    }
+    const user = ctx.state.user;
+    data.reviewerId = user.id;
+    data.reviewerName = user.realName;
+
     if (!data.result || !Object.values(REVIEW_RESULT).includes(data.result)) {
       ctx.status = 400;
       throw new Error('审核结果无效');
@@ -32,10 +32,10 @@ class ReviewController {
     const { id } = ctx.params;
     const data = ctx.request.body;
 
-    if (!data.reviewerId || !data.reviewerName) {
-      ctx.status = 400;
-      throw new Error('审核人信息不完整');
-    }
+    const user = ctx.state.user;
+    data.reviewerId = user.id;
+    data.reviewerName = user.realName;
+
     if (!data.result || !Object.values(REVIEW_RESULT).includes(data.result)) {
       ctx.status = 400;
       throw new Error('审核结果无效');

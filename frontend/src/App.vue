@@ -1,21 +1,23 @@
 <template>
-  <el-container class="app-container">
+  <router-view v-if="isLoginPage" />
+  <el-container v-else class="app-container">
     <el-header class="app-header">
       <div class="header-content">
         <div class="logo">
-          <el-icon :size="32" color="#409eff"><Prescription /></el-icon>
+          <el-icon :size="32" color="#fff"><Prescription /></el-icon>
           <span class="title">互联网医院电子处方管理系统</span>
         </div>
         <div class="user-info">
-          <el-tag type="success" size="large" effect="dark">
-            当前用户：{{ currentUser.name }}（{{ currentUser.role }}）
+          <el-tag type="success" effect="dark">
+            {{ currentUser.realName || '未登录' }}（{{ currentUser.roleLabel || '—' }}）
           </el-tag>
-          <el-dropdown trigger="click" style="margin-left: 16px">
-            <el-button :icon="User" circle size="large" />
+          <el-dropdown trigger="click" style="margin-left: 16px" @command="handleDropdownCommand">
+            <el-button :icon="User" circle />
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>个人信息</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
+                <el-dropdown-item disabled>所属：{{ currentUser.department || '—' }}</el-dropdown-item>
+                <el-dropdown-item disabled>职称：{{ currentUser.title || '—' }}</el-dropdown-item>
+                <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -41,11 +43,17 @@
             <el-icon><Document /></el-icon>
             <span>处方管理</span>
           </el-menu-item>
-          <el-menu-item index="/review/first">
+          <el-menu-item
+            v-if="canFirstReview"
+            index="/review/first"
+          >
             <el-icon><EditPen /></el-icon>
             <span>处方一审</span>
           </el-menu-item>
-          <el-menu-item index="/review/second">
+          <el-menu-item
+            v-if="canSecondReview"
+            index="/review/second"
+          >
             <el-icon><Check /></el-icon>
             <span>处方二审</span>
           </el-menu-item>
@@ -53,7 +61,10 @@
             <el-icon><Box /></el-icon>
             <span>药品管理</span>
           </el-menu-item>
-          <el-menu-item index="/conflicts">
+          <el-menu-item
+            v-if="canSecondReview"
+            index="/conflicts"
+          >
             <el-icon><Warning /></el-icon>
             <span>配伍禁忌维护</span>
           </el-menu-item>
@@ -72,18 +83,24 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { User, Prescription, DataAnalysis, Document, EditPen, Check, Box, Warning } from '@element-plus/icons-vue';
+import { getUserInfo } from '@/utils/request';
+import { logout } from '@/api/auth';
 
 const route = useRoute();
 
-const currentUser = ref({
-  id: 'pharmacist-001',
-  name: '陈药师',
-  role: '主管药师',
-  department: '药学部'
-});
+const currentUser = ref(getUserInfo() || {});
+
+const isLoginPage = computed(() => route.name === 'Login');
+
+const canFirstReview = computed(() =>
+  ['pharmacist', 'senior_pharmacist', 'admin'].includes(currentUser.value.role)
+);
+const canSecondReview = computed(() =>
+  ['senior_pharmacist', 'admin'].includes(currentUser.value.role)
+);
 
 const activeMenu = computed(() => {
   const path = route.path;
@@ -92,6 +109,20 @@ const activeMenu = computed(() => {
   if (path.startsWith('/prescriptions')) return '/prescriptions';
   return path;
 });
+
+watch(
+  () => route.fullPath,
+  () => {
+    currentUser.value = getUserInfo() || {};
+  },
+  { immediate: true }
+);
+
+const handleDropdownCommand = (cmd) => {
+  if (cmd === 'logout') {
+    logout();
+  }
+};
 </script>
 
 <style>
@@ -136,6 +167,7 @@ html, body, #app {
   font-size: 20px;
   font-weight: 600;
   letter-spacing: 1px;
+  color: #fff;
 }
 
 .user-info {

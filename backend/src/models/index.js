@@ -5,6 +5,7 @@ const Prescription = require('./prescription');
 const PrescriptionItem = require('./prescriptionItem');
 const DrugConflict = require('./drugConflict');
 const ReviewRecord = require('./reviewRecord');
+const User = require('./user');
 
 Prescription.hasMany(PrescriptionItem, {
   foreignKey: 'prescriptionId',
@@ -33,11 +34,17 @@ ReviewRecord.belongsTo(Prescription, {
   as: 'prescription'
 });
 
+ReviewRecord.belongsTo(User, {
+  foreignKey: 'reviewerId',
+  as: 'reviewer'
+});
+
 module.exports = {
   sequelize,
   Drug,
   Prescription,
   PrescriptionItem,
   DrugConflict,
-  ReviewRecord
+  ReviewRecord,
+  User
 };

@@ -269,6 +269,7 @@ import {
   getPrescriptionList, getPrescriptionDetail, firstReview, secondReview
 } from '@/api/prescription';
 import { PRESCRIPTION_STATUS, PRESCRIPTION_STATUS_MAP, REVIEW_RESULT } from '@/utils/constants';
+import { getUserInfo } from '@/utils/request';
 import DrugConflictAlert from '@/components/DrugConflictAlert.vue';
 import dayjs from 'dayjs';
 
@@ -294,10 +295,10 @@ const showConflictAlert = ref(false);
 const showConflictDetail = ref(false);
 const reviewFormRef = ref(null);
 
+const loginUser = getUserInfo() || {};
+
 const reviewForm = reactive({
-  comment: '',
-  reviewerId: 'pharmacist-001',
-  reviewerName: '陈药师'
+  comment: ''
 });
 
 const conflictCheck = computed(() => current.value?.conflictCheck || {

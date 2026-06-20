@@ -34,5 +34,19 @@ module.exports = {
   CONFLICT_SEVERITY: {
     WARNING: 'warning',
     DANGER: 'danger'
+  },
+
+  USER_ROLE: {
+    DOCTOR: 'doctor',
+    PHARMACIST: 'pharmacist',
+    SENIOR_PHARMACIST: 'senior_pharmacist',
+    ADMIN: 'admin'
+  },
+
+  USER_ROLE_LABEL: {
+    doctor: '医生',
+    pharmacist: '药师（一审）',
+    senior_pharmacist: '主管药师（二审）',
+    admin: '系统管理员'
   }
 };

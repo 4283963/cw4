@@ -5,9 +5,10 @@ const {
   Prescription,
   PrescriptionItem,
   DrugConflict,
-  ReviewRecord
+  ReviewRecord,
+  User
 } = require('../models');
-const { PRESCRIPTION_STATUS, CONFLICT_SEVERITY } = require('../config');
+const { PRESCRIPTION_STATUS, CONFLICT_SEVERITY, USER_ROLE } = require('../config');
 
 const generatePrescriptionNo = () => {
   const date = new Date();
@@ -25,6 +26,56 @@ const seedData = async () => {
 
     await sequelize.sync({ force: true });
     console.log('✓ 数据库表重建完成');
+
+    const userData = [
+      {
+        id: uuidv4(),
+        username: 'admin',
+        password: '123456',
+        realName: '系统管理员',
+        role: USER_ROLE.ADMIN,
+        department: '信息科',
+        title: '系统管理员',
+        phone: '13800000000',
+        status: 'active'
+      },
+      {
+        id: uuidv4(),
+        username: 'doctor_wang',
+        password: '123456',
+        realName: '王医生',
+        role: USER_ROLE.DOCTOR,
+        department: '内科',
+        title: '主治医师',
+        phone: '13800000001',
+        status: 'active'
+      },
+      {
+        id: uuidv4(),
+        username: 'pharmacist_chen',
+        password: '123456',
+        realName: '陈药师',
+        role: USER_ROLE.PHARMACIST,
+        department: '药学部',
+        title: '药师',
+        phone: '13800000002',
+        status: 'active'
+      },
+      {
+        id: uuidv4(),
+        username: 'senior_li',
+        password: '123456',
+        realName: '李主管药师',
+        role: USER_ROLE.SENIOR_PHARMACIST,
+        department: '药学部',
+        title: '主管药师',
+        phone: '13800000003',
+        status: 'active'
+      }
+    ];
+
+    const createdUsers = await User.bulkCreate(userData);
+    console.log(`✓ 插入用户数据: ${createdUsers.length} 条`);
 
     const drugData = [
       {
@@ -326,9 +377,15 @@ const seedData = async () => {
     console.log(`✓ 插入处方数据: ${prescriptionList.length} 条`);
 
     console.log('\n========== 数据初始化完成 ==========');
+    console.log('用户数据:', createdUsers.length, '条');
     console.log('药品数据:', createdDrugs.length, '条');
     console.log('配伍禁忌数据:', createdConflicts.length, '条');
     console.log('处方数据:', prescriptionList.length, '条');
+    console.log('\n========== 测试账号（密码均为 123456） ==========');
+    console.log('• 管理员: admin / 123456');
+    console.log('• 医生: doctor_wang / 123456');
+    console.log('• 药师(一审): pharmacist_chen / 123456');
+    console.log('• 主管药师(二审): senior_li / 123456');
     console.log('\n✓ 危险配伍示例: 布洛芬 + 阿司匹林 (已录入)');
     console.log('✓ 警告配伍示例: 阿莫西林 + 头孢克肟 (已录入)');
 

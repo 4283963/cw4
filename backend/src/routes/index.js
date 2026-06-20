@@ -2,6 +2,7 @@ const Router = require('koa-router');
 const prescriptionRouter = require('./prescription');
 const drugRouter = require('./drug');
 const drugConflictRouter = require('./drugConflict');
+const authRouter = require('./auth');
 
 const router = new Router();
 
@@ -13,6 +14,7 @@ router.get('/api/health', (ctx) => {
   };
 });
 
+router.use(authRouter.routes(), authRouter.allowedMethods());
 router.use(prescriptionRouter.routes(), prescriptionRouter.allowedMethods());
 router.use(drugRouter.routes(), drugRouter.allowedMethods());
 router.use(drugConflictRouter.routes(), drugConflictRouter.allowedMethods());
