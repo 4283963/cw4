@@ -46,6 +46,31 @@ class PrescriptionController {
     await prescriptionService.deletePrescription(id);
     ctx.body = { success: true };
   }
+
+  async verifyByQrToken(ctx) {
+    const { token } = ctx.params;
+    if (!token) {
+      ctx.status = 400;
+      ctx.body = {
+        success: false,
+        message: '缺少取药凭证',
+        data: null
+      };
+      return;
+    }
+
+    try {
+      const result = await prescriptionService.getPrescriptionByQrToken(token);
+      ctx.body = result;
+    } catch (err) {
+      ctx.status = err.status || 400;
+      ctx.body = {
+        success: false,
+        message: err.message,
+        data: null
+      };
+    }
+  }
 }
 
 module.exports = new PrescriptionController();

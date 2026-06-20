@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const { Prescription, PrescriptionItem, sequelize } = require('../models');
 const { PRESCRIPTION_STATUS } = require('../config');
 const drugConflictService = require('./drugConflictService');
+const { generateQrCodeToken, parseQrCodeToken, maskIdCard } = require('../utils/qrcode');
 
 class PrescriptionService {
   generatePrescriptionNo() {
@@ -85,10 +86,18 @@ class PrescriptionService {
 
     const conflictResult = await drugConflictService.checkPrescriptionConflicts(id);
 
-    return {
+    const result = {
       ...prescription.toJSON(),
       conflictCheck: conflictResult
     };
+
+    if (result.status === PRESCRIPTION_STATUS.SECOND_REVIEW_PASSED && result.patientIdCard) {
+      result.qrCodeToken = generateQrCodeToken(result.id, result.patientIdCard);
+    } else {
+      result.qrCodeToken = null;
+    }
+
+    return result;
   }
 
   async createPrescription(data) {
@@ -200,6 +209,78 @@ class PrescriptionService {
 
     await prescription.destroy();
     return { success: true };
+  }
+
+  async getPrescriptionByQrToken(token) {
+    const parsed = parseQrCodeToken(token);
+    if (!parsed) {
+      const error = new Error('无效的取药凭证');
+      error.status = 400;
+      throw error;
+    }
+
+    const { prescriptionId, patientIdCard } = parsed;
+
+    const prescription = await Prescription.findByPk(prescriptionId, {
+      include: [
+        {
+          model: PrescriptionItem,
+          as: 'items',
+          order: [['sortOrder', 'ASC']]
+        }
+      ]
+    });
+
+    if (!prescription) {
+      const error = new Error('处方不存在');
+      error.status = 404;
+      throw error;
+    }
+
+    if (prescription.patientIdCard !== patientIdCard) {
+      const error = new Error('处方信息与取药凭证不匹配');
+      error.status = 403;
+      throw error;
+    }
+
+    const availableStatuses = [
+      PRESCRIPTION_STATUS.SECOND_REVIEW_PASSED
+    ];
+    if (!availableStatuses.includes(prescription.status)) {
+      const error = new Error('处方尚未完成审核，暂不可取药');
+      error.status = 400;
+      throw error;
+    }
+
+    const data = prescription.toJSON();
+    data.patientIdCard = maskIdCard(data.patientIdCard);
+
+    return {
+      prescriptionNo: data.prescriptionNo,
+      status: data.status,
+      patientName: data.patientName,
+      patientGender: data.patientGender,
+      patientAge: data.patientAge,
+      patientIdCard: data.patientIdCard,
+      department: data.department,
+      diagnosis: data.diagnosis,
+      doctorName: data.doctorName,
+      secondReviewerName: data.secondReviewerName,
+      secondReviewTime: data.secondReviewTime,
+      createdAt: data.createdAt,
+      items: data.items.map(item => ({
+        drugName: item.drugName,
+        specification: item.specification,
+        dosage: item.dosage,
+        frequency: item.frequency,
+        quantity: item.quantity,
+        unit: item.unit,
+        daysSupply: item.daysSupply,
+        price: item.price,
+        subtotal: item.subtotal
+      })),
+      totalAmount: data.items.reduce((sum, i) => sum + Number(i.subtotal || 0), 0)
+    };
   }
 }
 

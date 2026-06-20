@@ -330,6 +330,29 @@ const seedData = async () => {
           { drugCode: 'DRG004', dosage: '口服，一次0.1g，一日1次', frequency: '1次/日', quantity: 1, daysSupply: 30, price: 16.80 },
           { drugCode: 'DRG008', dosage: '口服，一次30mg，一日1次', frequency: '1次/日', quantity: 4, daysSupply: 28, price: 38.00 }
         ]
+      },
+      {
+        patientName: '孙八',
+        patientGender: 'male',
+        patientAge: 50,
+        patientIdCard: '110101197505059876',
+        department: '心血管内科',
+        diagnosis: '2型糖尿病、高脂血症',
+        doctorId: uuidv4(),
+        doctorName: '王医生',
+        status: PRESCRIPTION_STATUS.SECOND_REVIEW_PASSED,
+        items: [
+          { drugCode: 'DRG007', dosage: '口服，一次0.5g，一日2次', frequency: '2次/日', quantity: 3, daysSupply: 30, price: 26.80 },
+          { drugCode: 'DRG006', dosage: '口服，一次10mg，一日1次', frequency: '1次/日', quantity: 2, daysSupply: 12, price: 18.50 }
+        ],
+        firstReviewerId: uuidv4(),
+        firstReviewerName: '陈药师',
+        firstReviewTime: new Date(Date.now() - 7200000),
+        firstReviewComment: '用药合理，剂量规范，建议通过',
+        secondReviewerId: uuidv4(),
+        secondReviewerName: '李主管药师',
+        secondReviewTime: new Date(Date.now() - 3600000),
+        secondReviewComment: '复核通过，无配伍禁忌'
       }
     ];
 
@@ -350,6 +373,10 @@ const seedData = async () => {
         firstReviewerName: rx.firstReviewerName || null,
         firstReviewTime: rx.firstReviewTime || null,
         firstReviewComment: rx.firstReviewComment || null,
+        secondReviewerId: rx.secondReviewerId || null,
+        secondReviewerName: rx.secondReviewerName || null,
+        secondReviewTime: rx.secondReviewTime || null,
+        secondReviewComment: rx.secondReviewComment || null,
         remark: rx.remark || ''
       });
 

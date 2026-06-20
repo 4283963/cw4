@@ -7,8 +7,9 @@ const { USER_ROLE } = require('../config');
 
 const router = new Router({ prefix: '/api/prescriptions' });
 
-router.get('/', authenticate, prescriptionController.getList);
 router.get('/statistics', authenticate, reviewController.getStatistics);
+router.get('/verify/:token', prescriptionController.verifyByQrToken);
+router.get('/', authenticate, prescriptionController.getList);
 router.get('/:id', authenticate, prescriptionController.getDetail);
 router.get('/:id/review-records', authenticate, reviewController.getReviewRecords);
 router.get('/:id/check-conflicts', authenticate, drugConflictController.checkPrescription);

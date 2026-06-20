@@ -182,6 +182,74 @@
             <div class="comment-content">{{ detail.secondReviewComment }}</div>
           </div>
         </el-card>
+
+        <el-card
+          v-if="detail?.qrCodeToken"
+          shadow="never"
+          class="detail-card qr-card"
+          style="margin-top: 16px"
+        >
+          <template #header>
+            <div class="card-header">
+              <el-icon color="#409eff"><DataLine /></el-icon>
+              <span>取药二维码</span>
+              <el-tag type="success" effect="dark" size="small">已通过审核</el-tag>
+            </div>
+          </template>
+          <div class="qr-wrapper">
+            <canvas ref="qrCanvasRef" class="qr-canvas"></canvas>
+          </div>
+          <el-alert
+            title="患者可凭此二维码到线下合作药店扫码取药"
+            type="info"
+            :closable="false"
+            show-icon
+            class="qr-tip"
+          />
+          <div class="qr-token-row">
+            <span class="label">凭证编号：</span>
+            <span class="value mono">{{ shortToken }}</span>
+            <el-button
+              link
+              type="primary"
+              size="small"
+              @click="downloadQrCode"
+            >
+              <el-icon><Download /></el-icon> 下载
+            </el-button>
+          </div>
+        </el-card>
+
+        <el-card
+          v-else-if="detail && !detail.qrCodeToken"
+          shadow="never"
+          class="detail-card"
+          style="margin-top: 16px"
+        >
+          <template #header>
+            <div class="card-header">
+              <el-icon><DataLine /></el-icon>
+              <span>取药二维码</span>
+            </div>
+          </template>
+          <el-empty description="处方尚未完成二审，暂无取药二维码" :image-size="60">
+            <template #image>
+              <el-icon :size="48" color="#c0c4cc"><Lock /></el-icon>
+            </template>
+            <p v-if="detail.status === PRESCRIPTION_STATUS.PENDING_SECOND_REVIEW" class="empty-desc">
+              当前状态：<el-tag size="small" type="warning">待二审</el-tag>
+            </p>
+            <p v-else-if="detail.status === PRESCRIPTION_STATUS.PENDING_FIRST_REVIEW" class="empty-desc">
+              当前状态：<el-tag size="small" type="warning">待一审</el-tag>
+            </p>
+            <p v-else-if="detail.status === PRESCRIPTION_STATUS.DRAFT" class="empty-desc">
+              当前状态：<el-tag size="small" type="info">草稿</el-tag>
+            </p>
+            <p v-else-if="[PRESCRIPTION_STATUS.FIRST_REVIEW_REJECTED, PRESCRIPTION_STATUS.SECOND_REVIEW_REJECTED].includes(detail.status)" class="empty-desc">
+              当前状态：<el-tag size="small" type="danger">已驳回</el-tag>
+            </p>
+          </el-empty>
+        </el-card>
       </el-col>
     </el-row>
 
@@ -195,15 +263,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  User, Box, EditPen, Check, Warning, ChatDotRound
+  User, Box, EditPen, Check, Warning, ChatDotRound, DataLine, Download, Lock
 } from '@element-plus/icons-vue';
 import { getPrescriptionDetail } from '@/api/prescription';
 import { PRESCRIPTION_STATUS, PRESCRIPTION_STATUS_MAP } from '@/utils/constants';
 import DrugConflictAlert from '@/components/DrugConflictAlert.vue';
 import dayjs from 'dayjs';
+import QRCode from 'qrcode';
 
 const route = useRoute();
 const router = useRouter();
@@ -211,6 +280,8 @@ const router = useRouter();
 const loading = ref(false);
 const detail = ref(null);
 const showConflictAlert = ref(false);
+const qrCanvasRef = ref(null);
+const qrDataUrl = ref('');
 
 const stepActive = computed(() => {
   const s = detail.value?.status;
@@ -224,6 +295,12 @@ const stepActive = computed(() => {
 
 const totalAmount = computed(() => {
   return (detail.value?.items || []).reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+});
+
+const shortToken = computed(() => {
+  const t = detail.value?.qrCodeToken;
+  if (!t) return '-';
+  return t.length > 16 ? `${t.slice(0, 8)}...${t.slice(-8)}` : t;
 });
 
 const getStatusType = (s) => PRESCRIPTION_STATUS_MAP[s]?.type || 'info';
@@ -253,11 +330,47 @@ const fetchDetail = async () => {
   try {
     const res = await getPrescriptionDetail(route.params.id);
     detail.value = res.data;
+    await nextTick();
+    await generateQrCode();
   } catch (e) {
     console.error(e);
   } finally {
     loading.value = false;
   }
+};
+
+const generateQrCode = async () => {
+  const token = detail.value?.qrCodeToken;
+  const canvas = qrCanvasRef.value;
+  if (!token || !canvas) return;
+
+  try {
+    const qrPayload = JSON.stringify({
+      token,
+      pid: detail.value.id,
+      ts: Date.now()
+    });
+
+    await QRCode.toCanvas(canvas, qrPayload, {
+      width: 200,
+      margin: 2,
+      color: {
+        dark: '#1f2937',
+        light: '#ffffff'
+      }
+    });
+    qrDataUrl.value = canvas.toDataURL('image/png');
+  } catch (e) {
+    console.error('生成二维码失败:', e);
+  }
+};
+
+const downloadQrCode = () => {
+  if (!qrDataUrl.value) return;
+  const link = document.createElement('a');
+  link.href = qrDataUrl.value;
+  link.download = `处方取药码-${detail.value.prescriptionNo}.png`;
+  link.click();
 };
 
 const goBack = () => {
@@ -362,5 +475,65 @@ onMounted(fetchDetail);
   line-height: 1.6;
   color: #303133;
   padding: 0 4px;
+}
+
+.qr-card :deep(.el-card__header) {
+  background: linear-gradient(90deg, #ecf5ff 0%, #fff 100%);
+}
+
+.qr-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px 10px 10px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.qr-canvas {
+  width: 200px;
+  height: 200px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+}
+
+.qr-tip {
+  margin-top: 12px;
+  border-radius: 6px;
+}
+
+.qr-tip :deep(.el-alert__title) {
+  font-size: 13px;
+}
+
+.qr-token-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 4px 0;
+  font-size: 13px;
+  color: #606266;
+}
+
+.qr-token-row .label {
+  color: #909399;
+}
+
+.qr-token-row .mono {
+  font-family: monospace;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.empty-desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 </style>

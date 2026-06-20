@@ -81,3 +81,10 @@ export function checkPrescriptionConflicts(id) {
     method: 'get'
   });
 }
+
+export function verifyPrescriptionByToken(token) {
+  return request({
+    url: `/prescriptions/verify/${token}`,
+    method: 'get'
+  });
+}
